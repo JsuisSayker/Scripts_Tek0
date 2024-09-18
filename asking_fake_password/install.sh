@@ -34,11 +34,11 @@ prompt_sudo() {
         if [ "$attempt_count" -ge "$max_attempts" ]; then
             echo "Maximum attempts reached. Rebooting..."
             sleep 1
-            reboot
+            systemctl reboot
         fi
 
         # Sleep for 10 seconds before asking again
-        sleep 10
+        sleep 1
     done
 }
 
