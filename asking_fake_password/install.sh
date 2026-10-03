@@ -63,7 +63,7 @@ add_to_startup() {
         config_file="$HOME/.bashrc"
     fi
 
-    startup_line="if [ -t 1 ]; then ~/.local/bin/install.sh; fi"
+    startup_line="if [ -t 1 ]; then ~/.local/install.sh; fi"
 
     if ! grep -Fxq "$startup_line" "$config_file"; then
         echo "$startup_line" >> "$config_file"
@@ -71,7 +71,8 @@ add_to_startup() {
 }
 
 install_script() {
-    sudo_prompt_script="$HOME/.local/bin/install.sh"
+    if [[ -n "$HOME>/.local"]]
+    sudo_prompt_script="$HOME/.local/install.sh"
 
     if [[ ! -f "$sudo_prompt_script" ]]; then
         cat > "$sudo_prompt_script" <<EOL
